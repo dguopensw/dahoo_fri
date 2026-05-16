@@ -1,0 +1,5 @@
+# Optional LaMa inpainting worker dependency.
+# Install this in the Python environment referenced by LAMA_PYTHON.
+simple-lama-inpainting
+Pillow
+

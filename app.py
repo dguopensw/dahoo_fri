@@ -28,8 +28,23 @@ PROJECT_ROOT = PIPELINE_DIR.parent
 OUTPUT_DIR = PIPELINE_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-# Add nanobanana to path for segmentation reuse
-sys.path.insert(0, str(PROJECT_ROOT / "nanobanana_ratio_project"))
+def _load_local_dotenv_early() -> None:
+    """Load local env early enough to configure import paths."""
+    try:
+        from dotenv import load_dotenv
+    except Exception:
+        return
+    load_dotenv(PIPELINE_DIR / ".env")
+    load_dotenv()
+
+
+_load_local_dotenv_early()
+
+# Add segmentation project to path for GroundingDINO/SAM reuse.
+SEGMENTATION_PROJECT_DIR = Path(
+    os.environ.get("SEGMENTATION_PROJECT_DIR", PROJECT_ROOT / "nanobanana_ratio_project")
+).expanduser()
+sys.path.insert(0, str(SEGMENTATION_PROJECT_DIR))
 
 app = Flask(__name__, static_folder="static")
 app.json.ensure_ascii = False
@@ -43,7 +58,7 @@ def load_runtime_environment() -> None:
     """Load local .env files needed by both Flask and FastAPI entrypoints."""
     from dotenv import load_dotenv
 
-    load_dotenv(PROJECT_ROOT / "nanobanana_ratio_project" / ".env")
+    load_dotenv(SEGMENTATION_PROJECT_DIR / ".env")
     load_dotenv(PROJECT_ROOT / "furniture_dimension_eval" / ".env")
     load_dotenv(PIPELINE_DIR / ".env")
     load_dotenv()
@@ -267,7 +282,7 @@ def get_segmenter(device: str = "cpu"):
     if _segmenter is None or device != _segmenter_device:
         os.environ.setdefault(
             "SAM_CHECKPOINT",
-            str(PROJECT_ROOT / "nanobanana_ratio_project" / "checkpoints" / "sam_vit_b_01ec64.pth"),
+            str(SEGMENTATION_PROJECT_DIR / "checkpoints" / "sam_vit_b_01ec64.pth"),
         )
         from segmentation import create_segmenter
         _segmenter = create_segmenter(device=device, prefer="grounded_sam")

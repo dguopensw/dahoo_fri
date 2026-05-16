@@ -38,7 +38,22 @@ OUTPUT_DIR = PIPELINE_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 SERVICE_STATIC_DIR = PIPELINE_DIR / "service_static"
 
-sys.path.insert(0, str(PROJECT_ROOT / "nanobanana_ratio_project"))
+def _load_local_dotenv_early() -> None:
+    """Load local env early enough to configure import paths."""
+    try:
+        from dotenv import load_dotenv
+    except Exception:
+        return
+    load_dotenv(PIPELINE_DIR / ".env")
+    load_dotenv()
+
+
+_load_local_dotenv_early()
+
+SEGMENTATION_PROJECT_DIR = Path(
+    os.environ.get("SEGMENTATION_PROJECT_DIR", PROJECT_ROOT / "nanobanana_ratio_project")
+).expanduser()
+sys.path.insert(0, str(SEGMENTATION_PROJECT_DIR))
 
 # Reuse core functions from app.py (legacy pipeline is preserved, not modified)
 import app as _core
@@ -715,7 +730,7 @@ def inpaint_obstacles_with_lama(
         "not_for_measurement",
     ]
 
-    _LAMA_PYTHON = "/opt/miniconda3/envs/lama_env/bin/python"
+    _LAMA_PYTHON = os.environ.get("LAMA_PYTHON", "/opt/miniconda3/envs/lama_env/bin/python")
     _LAMA_WORKER = str(PIPELINE_DIR / "lama_inpaint_worker.py")
     try:
         proc = subprocess.run(
