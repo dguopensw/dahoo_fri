@@ -1,0 +1,54 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Runtime outputs
+output/
+output_clean/
+uploads/
+tmp/
+temp/
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.pycache_compile/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Heavy model/checkpoint artifacts
+checkpoints/
+models/
+weights/
+*.pth
+*.pt
+*.onnx
+*.ckpt
+*.safetensors
+
+# Local caches
+.cache/
+cache/
+.huggingface/
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
