@@ -14,6 +14,7 @@ The returned segmenter exposes:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 
@@ -52,8 +53,9 @@ class _ProcessorProxy:
         self._last_state: dict | None = None
 
     def __call__(self, images, text: str, return_tensors: str = "pt") -> dict:
-        state = self._p.set_image(images)
-        state = self._p.set_text_prompt(prompt=text, state=state)
+        with (torch.autocast("cuda", dtype=torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()):
+            state = self._p.set_image(images)
+            state = self._p.set_text_prompt(prompt=text, state=state)
         self._last_state = state
         # Return a tensor-only dict so the `.to(device)` comprehension in app.py works.
         return {"_dummy": torch.zeros(1)}
@@ -118,8 +120,9 @@ class _PredictorProxy:
         bh = (y2 - y1) / H
         norm_box_cxcywh = [cx, cy, bw, bh]
 
-        state = self._p.set_image(self._pil_image)
-        state = self._p.add_geometric_prompt(state=state, box=norm_box_cxcywh, label=True)
+        with (torch.autocast("cuda", dtype=torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()):
+            state = self._p.set_image(self._pil_image)
+            state = self._p.add_geometric_prompt(state=state, box=norm_box_cxcywh, label=True)
 
         if "masks" not in state or len(state["masks"]) == 0:
             empty = np.zeros((1, H, W), dtype=bool)
@@ -169,8 +172,9 @@ class Sam3Segmenter:
         W, H = image.size
 
         prompt = furniture_type if furniture_type else "furniture"
-        state = self._sam3_processor.set_image(image)
-        state = self._sam3_processor.set_text_prompt(prompt=prompt, state=state)
+        with (torch.autocast("cuda", dtype=torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()):
+            state = self._sam3_processor.set_image(image)
+            state = self._sam3_processor.set_text_prompt(prompt=prompt, state=state)
 
         if "masks" not in state or len(state["masks"]) == 0:
             return SegmentResult(
