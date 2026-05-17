@@ -72,8 +72,8 @@ class _ProcessorProxy:
         if state is None or "boxes" not in state or len(state["boxes"]) == 0:
             return [{"boxes": torch.zeros(0, 4), "labels": [], "scores": torch.zeros(0)}]
 
-        boxes = state["boxes"].cpu()    # (N, 4) XYXY pixel coords
-        scores = state["scores"].cpu()  # (N,)
+        boxes = state["boxes"].cpu().float()    # (N, 4) XYXY pixel coords
+        scores = state["scores"].cpu().float()  # (N,)
 
         keep = scores > threshold
         boxes = boxes[keep]
@@ -128,8 +128,8 @@ class _PredictorProxy:
             empty = np.zeros((1, H, W), dtype=bool)
             return empty, np.array([0.0]), np.zeros((1, H, W))
 
-        masks_t = state["masks"].cpu()   # (N, 1, H, W) bool
-        scores_t = state["scores"].cpu() # (N,)
+        masks_t = state["masks"].cpu().float()   # (N, 1, H, W)
+        scores_t = state["scores"].cpu().float() # (N,)
 
         masks_np = masks_t.squeeze(1).numpy().astype(bool)   # (N, H, W)
         scores_np = scores_t.numpy()
@@ -183,8 +183,8 @@ class Sam3Segmenter:
                 confidence=0.0,
             )
 
-        masks = state["masks"].cpu()   # (N, 1, H, W)
-        scores = state["scores"].cpu()
+        masks = state["masks"].cpu().float()   # (N, 1, H, W)
+        scores = state["scores"].cpu().float()
 
         best_idx = int(scores.argmax())
         mask_np = masks[best_idx, 0].numpy().astype(np.uint8) * 255
