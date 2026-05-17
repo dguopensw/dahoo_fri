@@ -198,15 +198,18 @@ class Sam3Segmenter:
 
 def create_segmenter(device: str = "cuda", prefer: str = "grounded_sam") -> Sam3Segmenter:
     """Load SAM3 and return a segmenter compatible with app.py."""
+    import torch
     import sam3 as _sam3_pkg
     from sam3 import build_sam3_image_model
     from sam3.model.sam3_image_processor import Sam3Processor
 
+    # Always use CUDA when available — app.py defaults to "cpu" but SAM3 needs GPU
+    if torch.cuda.is_available():
+        device = "cuda"
+
     bpe_path = os.path.join(
         os.path.dirname(_sam3_pkg.__file__), "assets", "bpe_simple_vocab_16e6.txt.gz"
     )
-
-    hf_token = os.environ.get("HF_TOKEN")
 
     model = build_sam3_image_model(
         bpe_path=bpe_path,
