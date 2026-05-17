@@ -23,6 +23,30 @@ import torch
 from PIL import Image
 
 
+# Location/direction words that follow the noun phrase in GPT-generated prompts.
+_LOCATION_WORDS = {
+    "left", "right", "top", "bottom", "front", "back", "side", "middle",
+    "upper", "lower", "corner", "center", "near", "on", "in", "at", "of",
+    "inside", "outside", "above", "below", "behind",
+}
+
+
+def _extract_noun(phrase: str) -> str:
+    """Return only the noun part of a location-qualified phrase.
+
+    e.g. "books left side middle shelf" → "books"
+         "vase with flowers right side" → "vase with flowers"
+         "cup"                          → "cup"
+    """
+    words = phrase.split()
+    noun_words = []
+    for w in words:
+        if w.lower() in _LOCATION_WORDS:
+            break
+        noun_words.append(w)
+    return " ".join(noun_words) if noun_words else phrase
+
+
 # ---------------------------------------------------------------------------
 # Result type used by the fallback .segment() path
 # ---------------------------------------------------------------------------
@@ -53,11 +77,41 @@ class _ProcessorProxy:
         self._last_state: dict | None = None
 
     def __call__(self, images, text: str, return_tensors: str = "pt") -> dict:
-        with (torch.autocast("cuda", dtype=torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()):
-            state = self._p.set_image(images)
-            state = self._p.set_text_prompt(prompt=text, state=state)
-        self._last_state = state
-        # Return a tensor-only dict so the `.to(device)` comprehension in app.py works.
+        # Split GroundingDINO-style compound prompt ("obj1. obj2. obj3.")
+        # and query SAM3 separately per concept, then merge detections.
+        concepts = [c.strip().rstrip(".") for c in text.split(".") if c.strip()]
+        if not concepts:
+            concepts = [text]
+
+        all_boxes, all_scores, all_masks = [], [], []
+
+        ctx = (torch.autocast("cuda", dtype=torch.bfloat16)
+               if torch.cuda.is_available() else contextlib.nullcontext())
+
+        with ctx:
+            for concept in concepts:
+                # Strip trailing location words — keep only the noun phrase
+                # e.g. "books left side middle shelf" → "books"
+                noun = _extract_noun(concept)
+                state = self._p.set_image(images)
+                state = self._p.set_text_prompt(prompt=noun, state=state)
+                if "boxes" in state and len(state["boxes"]) > 0:
+                    all_boxes.append(state["boxes"])
+                    all_scores.append(state["scores"])
+                    if "masks" in state and len(state["masks"]) > 0:
+                        all_masks.append(state["masks"])
+
+        if all_boxes:
+            merged = {
+                "boxes": torch.cat(all_boxes, dim=0),
+                "scores": torch.cat(all_scores, dim=0),
+            }
+            if all_masks:
+                merged["masks"] = torch.cat(all_masks, dim=0)
+            self._last_state = merged
+        else:
+            self._last_state = {}
+
         return {"_dummy": torch.zeros(1)}
 
     def post_process_grounded_object_detection(
