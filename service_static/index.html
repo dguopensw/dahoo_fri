@@ -378,6 +378,7 @@
   let scrapeData = null;
   let selectedImageIndex = 0;
   let jobId = null;
+  let isProcessing = false;
 
   const $ = id => document.getElementById(id);
   const show = id => $(id).classList.remove('hidden');
@@ -389,6 +390,7 @@
   $('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') doScrape(); });
 
   async function doScrape() {
+    if (isProcessing) { alert('처리 중입니다. 잠시 기다려주세요.'); return; }
     const url = $('urlInput').value.trim();
     if (!url) { alert('URL을 입력해주세요.'); return; }
 
@@ -497,13 +499,16 @@
   $('processBtn').addEventListener('click', doProcess);
 
   async function doProcess() {
+    if (isProcessing) return;
     const url = $('urlInput').value.trim();
     if (!url) return;
 
+    isProcessing = true;
     hide('processError');
     hide('results');
     show('processLoading');
     $('processBtn').disabled = true;
+    $('scrapeBtn').disabled = true;
 
     const stages = [
       '가구 종류 판단 중...',
@@ -536,6 +541,8 @@
       clearInterval(stageTimer);
       hide('processLoading');
       $('processBtn').disabled = false;
+      $('scrapeBtn').disabled = false;
+      isProcessing = false;
     }
   }
 
