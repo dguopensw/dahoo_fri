@@ -15,8 +15,8 @@ fi
 cd "$INSTALL_DIR"
 
 echo "=== [2/4] Installing Python dependencies ==="
-pip install --no-cache-dir -r requirements.txt
-pip install --no-cache-dir -r requirements-optional.txt
+pip install --no-cache-dir --ignore-installed -r requirements.txt
+pip install --no-cache-dir --ignore-installed -r requirements-optional.txt
 
 echo "=== [3/4] Installing SAM3 ==="
 if [ ! -d "$SAM3_DIR" ]; then
