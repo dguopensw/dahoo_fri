@@ -275,5 +275,5 @@ def create_segmenter(device: str = "cuda", prefer: str = "grounded_sam") -> Sam3
         load_from_HF=True,
     )
 
-    sam3_processor = Sam3Processor(model, confidence_threshold=0.15)
+    sam3_processor = Sam3Processor(model)
     return Sam3Segmenter(model, sam3_processor, device)
