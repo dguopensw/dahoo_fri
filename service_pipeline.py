@@ -3345,6 +3345,8 @@ def run_service_pipeline(url: str, selected_image_index: int) -> tuple[dict, int
             "final_alpha": "04_final_alpha.png" if soft_alpha_mask_path.exists() else None,
             "obstacle_mask": "05_obstacle_mask.png"
                 if obstacle_mask_path and obstacle_mask_path.exists() else None,
+            "contaminant_mask": "07_contaminant_mask.png"
+                if (job_dir / "07_contaminant_mask.png").exists() else None,
             "obstacle_removed": "05_obstacle_removed.png"
                 if obstacle_removed_path and obstacle_removed_path.exists() else None,
             "boundary_completion_mask": "08_boundary_completion_mask.png"
