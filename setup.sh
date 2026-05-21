@@ -15,6 +15,7 @@ fi
 cd "$INSTALL_DIR"
 
 echo "=== [2/4] Installing Python dependencies ==="
+apt-get remove -y python3-blinker python3-flask python3-werkzeug 2>/dev/null || true
 pip install --no-cache-dir -r requirements.txt
 pip install --no-cache-dir --no-deps -r requirements-optional.txt
 pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu128
