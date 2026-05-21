@@ -10,5 +10,6 @@ rembg
 onnxruntime
 Pillow
 opencv-python
-numpy
-torch
+numpy<2
+pycocotools
+einops
