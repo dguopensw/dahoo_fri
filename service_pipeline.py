@@ -644,7 +644,7 @@ def segment_objects_with_sam3(
         if boxes is None or len(boxes) == 0:
             logger.warning("SAM3: no detections for: %s", prompt_text)
             return {"status": "no_detections", "error": None, "mask_coverage": 0.0,
-                    "prompts_used": object_names}
+                    "prompts_used": object_names, "prompt_text": prompt_text}
 
         gsam.predictor.set_image(image_np)
         union_mask = np.zeros((h, w), dtype=np.uint8)
@@ -680,7 +680,8 @@ def segment_objects_with_sam3(
 
         if obstacle_count == 0:
             return {"status": "no_valid_detections", "error": None,
-                    "mask_coverage": 0.0, "prompts_used": object_names}
+                    "mask_coverage": 0.0, "prompts_used": object_names,
+                    "prompt_text": prompt_text}
 
         output_mask_path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(output_mask_path), union_mask)
@@ -696,6 +697,7 @@ def segment_objects_with_sam3(
             "mask_coverage": round(mask_coverage, 4),
             "object_count": obstacle_count,
             "prompts_used": object_names,
+            "prompt_text": prompt_text,
             "warnings": seg_warnings,
         }
 
@@ -3379,6 +3381,8 @@ def run_service_pipeline(url: str, selected_image_index: int) -> tuple[dict, int
             "generation_cutout_quality": generation_cutout_quality,
             "final_decision": final_decision,
             "files": files,
+            "sam3_obstacle_info": sam3_info,
+            "sam3_contaminant_info": contaminant_sam3_info,
             "debug": {
                 "sam3_info": sam3_info,
                 "contaminant_sam3_info": contaminant_sam3_info,

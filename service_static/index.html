@@ -345,6 +345,12 @@
       <div id="obstacleContent"></div>
     </div>
 
+    <!-- SAM3 Segmentation Prompts -->
+    <div class="card" id="sam3PromptCard">
+      <div class="card-title">SAM3 세그멘테이션 프롬프트</div>
+      <div id="sam3PromptContent"><div class="badge-status badge-na" style="display:inline-flex">처리 전</div></div>
+    </div>
+
     <!-- Dimensions -->
     <div class="card">
       <div class="card-title">치수 결과</div>
@@ -623,6 +629,51 @@
       obsEl.innerHTML = `<div class="badge-status badge-ok">장애물 없음 — ${obs.reason || '깨끗한 이미지'}</div>`;
     }
 
+    // --- SAM3 Segmentation Prompts ---
+    const sam3Obs = data.masking_strategy?.sam3_info || data.sam3_info;
+    const sam3Cont = data.masking_strategy?.contaminant_sam3_info || data.contaminant_sam3_info;
+    const contAnal = data.generation_contaminant_analysis || {};
+    const sam3El = $('sam3PromptContent');
+    if (sam3El) {
+      let html = '';
+
+      if (obs.has_major_obstacle || contAnal.has_generation_contaminants) {
+        // Obstacle SAM3 info
+        if (obs.has_major_obstacle) {
+          const si = data.sam3_obstacle_info || {};
+          const promptText = si.prompt_text || (obs.obstacles || []).map(o => o.name).join('. ') + '.';
+          const promptsUsed = si.prompts_used || (obs.obstacles || []).map(o => o.name);
+          html += `<div class="obstacle-box" style="margin-bottom:10px">
+            <h4 style="margin:0 0 6px">🎯 장애물 SAM3 프롬프트</h4>
+            <div style="font-family:monospace;background:var(--surface);padding:8px;border-radius:6px;font-size:12px;word-break:break-all">"${promptText}"</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">개별 항목: ${promptsUsed.map(p => `<code>${p}</code>`).join(', ')}</div>
+            ${si.status ? `<div style="font-size:11px;margin-top:4px">상태: <strong>${si.status}</strong> | 감지 수: ${si.object_count ?? '-'} | 커버리지: ${si.mask_coverage != null ? (si.mask_coverage * 100).toFixed(1) + '%' : '-'}</div>` : ''}
+          </div>`;
+        }
+
+        // Contaminant SAM3 info
+        if (contAnal.has_generation_contaminants) {
+          const ci = data.sam3_contaminant_info || {};
+          const conts = contAnal.contaminants || [];
+          const promptText = ci.prompt_text || conts.map(o => `${o.name}${o.location ? ' ' + o.location : ''}`).join('. ') + '.';
+          const promptsUsed = ci.prompts_used || conts.map(o => o.name);
+          html += `<div class="obstacle-box">
+            <h4 style="margin:0 0 6px">🎯 오염물 SAM3 프롬프트</h4>
+            <div style="font-family:monospace;background:var(--surface);padding:8px;border-radius:6px;font-size:12px;word-break:break-all">"${promptText}"</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">개별 항목: ${promptsUsed.map(p => `<code>${p}</code>`).join(', ')}</div>
+            ${ci.status ? `<div style="font-size:11px;margin-top:4px">상태: <strong>${ci.status}</strong> | 감지 수: ${ci.object_count ?? '-'} | 커버리지: ${ci.mask_coverage != null ? (ci.mask_coverage * 100).toFixed(1) + '%' : '-'}</div>` : ''}
+            <div style="margin-top:8px">
+              ${conts.map(o => `<div style="font-size:12px">• <strong>${o.name}</strong>${o.location ? ' @ ' + o.location : ''}${o.description ? ' — ' + o.description : ''}</div>`).join('')}
+            </div>
+          </div>`;
+        }
+      } else {
+        html = '<div class="badge-status badge-ok" style="display:inline-flex">SAM3 프롬프트 없음 (장애물/오염물 미감지)</div>';
+      }
+
+      sam3El.innerHTML = html;
+    }
+
     // --- Dimensions ---
     const dims = data.dimensions || {};
     const dimGrid = $('dimGrid');
@@ -725,6 +776,8 @@
       detection_quality: data.detection_quality,
       obstacle_analysis: data.obstacle_analysis,
       generation_contaminant_analysis: data.generation_contaminant_analysis,
+      sam3_obstacle_info: data.sam3_obstacle_info,
+      sam3_contaminant_info: data.sam3_contaminant_info,
       dimensions: data.dimensions,
       cutout_quality: data.cutout_quality,
       generation_cutout_quality: data.generation_cutout_quality,
