@@ -2010,6 +2010,7 @@ def generate_sam3_furniture_mask_natural(
 
     try:
         import torch
+        import torchvision.ops
         from PIL import Image as _PIL_Image
 
         segmenter = _core.get_segmenter()
