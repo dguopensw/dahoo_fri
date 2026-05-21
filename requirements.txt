@@ -13,3 +13,7 @@ opencv-python
 numpy<2
 pycocotools
 einops
+huggingface_hub
+iopath
+timm
+ftfy
