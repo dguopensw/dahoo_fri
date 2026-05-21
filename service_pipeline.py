@@ -1981,6 +1981,100 @@ def generate_sam3_furniture_mask(
 
 
 # ---------------------------------------------------------------------------
+# generate_sam3_furniture_mask_natural
+# ---------------------------------------------------------------------------
+
+def generate_sam3_furniture_mask_natural(
+    image_path: Path,
+    furniture_type: str,
+    output_mask_path: Path,
+    title: str = "",
+    description: str = "",
+    debug_dir: Path | None = None,
+) -> dict:
+    """Simplified mask generation: pass furniture_type as prompt and use
+    masks directly from set_text_prompt without box-based predictor.predict.
+    """
+    import cv2
+    import numpy as np
+
+    masking_family = get_masking_family(furniture_type, title, description)
+
+    img = cv2.imread(str(image_path))
+    if img is None:
+        return {"status": "failed", "error": "cannot_read_image",
+                "masking_family": masking_family, "valid_part_count": 0}
+    h, w = img.shape[:2]
+
+    try:
+        import torch
+        from PIL import Image as _PIL_Image
+
+        segmenter = _core.get_segmenter()
+        gsam = _core._get_gsam(segmenter)
+
+        if not hasattr(gsam, "processor"):
+            return {"status": "failed", "error": "gsam_not_available",
+                    "masking_family": masking_family, "valid_part_count": 0}
+
+        pil_image = _PIL_Image.open(image_path).convert("RGB")
+
+        prompt = furniture_type if furniture_type != "unknown" else "furniture"
+        gsam.processor(images=pil_image, text=prompt + ".", return_tensors="pt")
+
+        last_state = gsam.processor._last_state or {}
+        boxes  = last_state.get("boxes")
+        scores = last_state.get("scores")
+        masks  = last_state.get("masks")  # (N, 1, H, W)
+
+        if boxes is None or len(boxes) == 0 or masks is None or len(masks) == 0:
+            return {"status": "failed", "error": "no_detections",
+                    "masking_family": masking_family, "valid_part_count": 0,
+                    "prompts_used": [prompt]}
+
+        union_mask = np.zeros((h, w), dtype=np.uint8)
+        added = 0
+        for i in range(len(boxes)):
+            part_mask = (masks[i, 0].cpu().float().numpy() > 0).astype(np.uint8) * 255
+            cov = float(np.count_nonzero(part_mask > 127)) / (h * w)
+            if cov < 0.001 or cov > 0.95:
+                continue
+            union_mask = np.maximum(union_mask, part_mask)
+            added += 1
+
+        if added == 0:
+            return {"status": "failed", "error": "no_valid_masks",
+                    "masking_family": masking_family, "valid_part_count": 0,
+                    "prompts_used": [prompt]}
+
+        output_mask_path.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(output_mask_path), union_mask)
+
+        mask_coverage = float(np.count_nonzero(union_mask > 127)) / (h * w)
+        ys, xs = np.where(union_mask > 127)
+        bbox = ([int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
+                if len(xs) > 0 else None)
+
+        logger.info("SAM3-natural mask done: family=%s prompt=%s valid_masks=%d coverage=%.3f",
+                    masking_family, prompt, added, mask_coverage)
+        return {
+            "status": "done",
+            "method": "sam3_natural_direct_mask",
+            "masking_family": masking_family,
+            "prompts_used": [prompt],
+            "valid_part_count": added,
+            "mask_coverage": round(mask_coverage, 4),
+            "bbox": bbox,
+            "warnings": [],
+        }
+
+    except Exception as e:
+        logger.warning("generate_sam3_furniture_mask_natural failed: %s", e)
+        return {"status": "failed", "error": str(e),
+                "masking_family": masking_family, "valid_part_count": 0}
+
+
+# ---------------------------------------------------------------------------
 # validate_soft_furniture_mask
 # ---------------------------------------------------------------------------
 
@@ -2883,7 +2977,7 @@ def run_service_pipeline(url: str, selected_image_index: int) -> tuple[dict, int
         final_mask_path     = job_dir / "04_final_mask.png"
         soft_alpha_mask_path = job_dir / "04_final_alpha.png"
 
-        furniture_mask_info = generate_sam3_furniture_mask(
+        furniture_mask_info = generate_sam3_furniture_mask_natural(
             original_path, furniture_type, raw_mask_path,
             title=title, description=description, debug_dir=debug_dir,
         )

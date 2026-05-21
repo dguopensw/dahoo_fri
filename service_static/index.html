@@ -145,8 +145,13 @@
     }
     .result-img-label {
       font-size: 12px; color: var(--text-muted);
-      padding: 6px 10px;
+      padding: 6px 10px 2px;
       background: var(--card); border-top: 1px solid var(--border);
+    }
+    .result-img-filename {
+      font-size: 11px; color: #888; font-family: monospace;
+      padding: 0 10px 6px;
+      background: var(--card);
     }
 
     /* --- Info Rows --- */
@@ -560,11 +565,13 @@
     const imagesEl = $('resultImages');
     imagesEl.innerHTML = '';
     const imageSlots = [
-      { key: 'original',         label: '원본 이미지' },
-      { key: 'measurement',      label: '측정용 이미지 (원본 기준)' },
-      { key: 'final_cutout',     label: '최종 누끼' },
-      { key: 'obstacle_mask',    label: '장애물 마스크' },
-      { key: 'obstacle_removed', label: '장애물 제거 이미지' },
+      { key: 'original',          label: '원본 이미지' },
+      { key: 'raw_mask',          label: '마스크 (raw)' },
+      { key: 'final_mask',        label: '마스크 (final)' },
+      { key: 'measurement',       label: '측정용 이미지 (원본 기준)' },
+      { key: 'final_cutout',      label: '최종 누끼' },
+      { key: 'obstacle_mask',     label: '장애물 마스크' },
+      { key: 'obstacle_removed',  label: '장애물 제거 이미지' },
       { key: 'generation_cutout', label: '생성용 누끼 (3D/AR)' },
     ];
     imageSlots.forEach(({ key, label }) => {
@@ -575,6 +582,7 @@
       card.innerHTML = `
         <img src="${imgUrl(jid, filename)}" alt="${label}" loading="lazy" />
         <div class="result-img-label">${label}</div>
+        <div class="result-img-filename">${filename}</div>
       `;
       imagesEl.appendChild(card);
     });
